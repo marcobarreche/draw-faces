@@ -20,11 +20,7 @@ Editor.prototype.createLoadingImage = function() {
 Editor.prototype.paintImageInCanvas = function() {
     $('#number-img').val(this.index);
     if (this.index >= this.listImages.length) {
-        this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
-        alert('There are only ' + this.listImages.length + ' images!!.');
-        this.index = this.listImages.length - 2;
-        this.showNextImage();
-        return false;
+        this.index = this.listImages.length - 1;
     } else if (this.index < 0) {
         this.index = 0;
     }
@@ -41,10 +37,13 @@ Editor.prototype.paintImageInCanvas = function() {
     this.ctx.drawImage(img, 0, 0, img.width, img.height);
 };
 Editor.prototype.showNextImage = function() {
-    if (this.index < 0) {
-        this.index = -1;
-    }
     this.index ++;
+    if (this.index < 0) {
+        this.index = 0;
+    } else if (this.index >= this.listImages.length) {
+        this.index = this.listImages.length - 1;
+    }
+
     this.currentFace = {};
     this.facesPosition = [];
 
