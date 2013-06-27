@@ -41,6 +41,9 @@ Editor.prototype.paintImageInCanvas = function() {
     this.ctx.drawImage(img, 0, 0, img.width, img.height);
 };
 Editor.prototype.showNextImage = function() {
+    if (this.index < 0) {
+        this.index = -1;
+    }
     this.index ++;
     this.currentFace = {};
     this.facesPosition = [];
