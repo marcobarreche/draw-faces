@@ -2,7 +2,8 @@ draw-faces
 ==========
 
 1. Installation
-	pip install Flask
+	apt-get install mysql-client mysql-server libmysqlclient-dev
+	pip install Flask MySQL-python==1.2.3
 
 2. Update html
 	1. python generate_html.py draw_faces.html (*)
@@ -12,6 +13,7 @@ draw-faces
 3. Init the database
 	mysql -u root -p -e "CREATE DATABASE draw_faces DEFAULT CHARSET utf8;"
 	mysql draw_faces < schema.sql -h localhost -u root -p
+	(*) The password is 'root'
 
 4. Execute
 	python image-crop.py 0.0.0.0

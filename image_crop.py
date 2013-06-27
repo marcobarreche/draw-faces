@@ -103,4 +103,5 @@ def write_position(face):
 
 
 if __name__ == "__main__":
-    app.run(host=sys.argv[1], debug=False)
+    host, port = sys.argv[1].split(':')
+    app.run(host=host, debug=False, port=int(port))
