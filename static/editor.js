@@ -39,22 +39,21 @@ Editor.prototype.paintImageInCanvas = function() {
     this.canvas.css('height', img.height);
     this.ctx = this.canvas[0].getContext('2d');
     this.ctx.drawImage(img, 0, 0, img.width, img.height);
-    if (this.allFacesPosition[img.src]) {
-        this.facesPosition = this.allFacesPosition[img.src];
-    }
 };
 Editor.prototype.showNextImage = function() {
     this.index ++;
     this.currentFace = {};
     this.facesPosition = [];
+
+    var img = $(this.listImages[this.index])[0];
+    if (this.allFacesPosition[img.src])
+        this.facesPosition = this.allFacesPosition[img.src];
     this.refreshCanvas();
 };
-
 Editor.prototype.refreshCanvas = function() {
     this.paintImageInCanvas();
     this.paintFacesFromList();
 };
-
 Editor.prototype.paintAFace = function(left, top, width, height) {
     this.ctx.beginPath();
     this.ctx.rect(left, top, width, height);
@@ -79,9 +78,14 @@ Editor.prototype.paintFacesFromList = function() {
         this.ctx.stroke();
     }
 };
-
 Editor.prototype.activateEvents = function() {
     var self = this;
+    $.get('/get_faces_position').done(function(data) {
+        self.allFacesPosition = JSON.parse(data);
+    }).fail(function() {
+        self.allFacesPosition = {};
+    });
+
     this.canvas.mousedown(function(e) {
         self.paint = true;
         self.currentFace = utils.getPosition(e, self.canvas.offset());
