@@ -97,7 +97,6 @@ def get_position_of_faces():
 
 
 def write_position(face):
-    print face
     return '%s,%s,%s,%s\n' % (str(face.get('left')), str(face.get('top')),
                               str(face.get('width')), str(face.get('height')))
 
