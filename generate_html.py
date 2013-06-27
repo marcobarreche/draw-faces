@@ -26,6 +26,9 @@ HEAD_HTML = """<html>
                         <input type="text" value="-1" id="number-img"/>
                         <button id="next-img">&gt;</button>
                     </div>
+                    <div id="menu-generate-file">
+                        <button id="generate-file">Generate file</button>
+                    </div>
                 </div>
                 <div id="canvas-editor">
                     <canvas id="canvas1"/>

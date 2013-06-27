@@ -18,7 +18,5 @@ draw-faces
 4. Execute
 	python image-crop.py 0.0.0.0
 
-5. Url of the service: http://<server_name>/static/draw-faces.html
-6. Generate output.txt: http://<server_name>/generate_output
-7. See all the faces position: http://<server_name>/get_faces_position
-
+5. Url of the service: http://eu5.thumbr.it/static/draw-faces.html
+6. See all the faces position: http://eu5.thumbr.it/get_faces_position

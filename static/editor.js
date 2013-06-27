@@ -145,6 +145,13 @@ Editor.prototype.activateEvents = function() {
     $('#next-img').click(function(e) {
         self.showNextImage();
     });
+    $('#generate-file').click(function(e) {
+        $.post('/generate_file').done(function() {
+            alert('The file was generated correctly');
+        }).fail(function() {
+            alert('The file was not generated correctly. There was an error!!');
+        });
+    });
 };
 
 var utils = {

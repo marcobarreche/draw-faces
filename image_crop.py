@@ -60,7 +60,7 @@ def write_face_position():
     return Response('ok', status=200)
 
 
-@app.route('/generate_file')
+@app.route('/generate_file', methods=['POST'])
 def generate_file_with_all_positions():
     faces = get_position_of_faces()
     if not faces:
@@ -88,9 +88,9 @@ def teardown_request(exception):
 
 
 def get_position_of_faces():
-    faces = [(url, json.loads(pos)) for (url, pos) in database.get_faces_in_all_images()]
+    faces = database.get_faces_in_all_images()
     if faces:
-        faces = dict(faces)
+        faces = dict([(url, json.loads(pos)) for (url, pos) in faces])
     else:
         faces = {}
     return faces
