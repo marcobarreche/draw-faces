@@ -29,6 +29,7 @@ HEAD_HTML = """<html>
                     <div id="menu-generate-file">
                         <button id="generate-file">Generate file</button>
                     </div>
+                    <a href="./output.txt">output.txt</a>
                 </div>
                 <div id="canvas-editor">
                     <canvas id="canvas1"/>
