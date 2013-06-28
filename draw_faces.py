@@ -8,6 +8,7 @@ from flask import g
 from logging import config as logging_config  # pylint: disable=W0404
 import database
 import json
+import random
 import logging
 import os
 import sys
@@ -44,7 +45,7 @@ except AttributeError:
 
 @app.route('/')
 def showPage():
-    return redirect('static/draw_faces.html')
+    return redirect('static/draw-faces.html?v=%s' % str(int(random.random() * 100000)))
 
 
 @app.route('/get_faces_position')
