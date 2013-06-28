@@ -142,7 +142,7 @@ Editor.prototype.activateEvents = function() {
 
     this.canvas.mousemove(function(e) {
         var position = utils.getPosition(e, self.canvas.offset());
-        var aux = utils.getFaceAndAssociatedAction(positions, self.facesPosition);
+        var aux = utils.getFaceAndAssociatedAction(position, self.facesPosition);
         if (aux) {
             var position = aux[1];
             var newFacesPosition = aux[2];
