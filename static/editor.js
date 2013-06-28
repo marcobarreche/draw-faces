@@ -3,40 +3,51 @@ function Editor () {
     this.canvas = $('#canvas1');
 
     this.index = -1;
+    this.oldSizeImages = {};
     this.allFacesPosition = {};
     this.facesPosition = [];
     this.currentFace = {};
     this.paint = true;
     this.loadingImage = this.createLoadingImage();
-    this.showNextImage();
     this.activateEvents();
 }
 Editor.prototype.createLoadingImage = function() {
     var loadingImage = $('#loading-image');
-    loadingImage[0].width = 500;
-    loadingImage[0].height = 400;
+    loadingImage[0].width = DEFAULT_SIZE_CANVAS.width;
+    loadingImage[0].height = DEFAULT_SIZE_CANVAS.height;
     return loadingImage;
 };
 Editor.prototype.paintImageInCanvas = function() {
     $('#number-img').val(this.index);
+
     if (this.index >= this.listImages.length) {
         this.index = this.listImages.length - 1;
     } else if (this.index < 0) {
         this.index = 0;
     }
 
-    img = $(this.listImages[this.index])[0];
-    if (img.width == 0) {
-        img = this.loadingImage[0];
+    img = $(this.listImages[this.index]);
+    var oldSize = this.oldSizeImages[img[0].src];
+    if (img[0].width == 0 || !oldSize) {
+        img = this.loadingImage;
+        this.ctx = this.canvas[0].getContext('2d');
+        this.ctx.clearRect(0, 0, this.canvas[0].width, this.canvas[0].height);
+        return 0;
     }
 
+    var newSize = {width: img[0].width, height: img[0].height};
+    if (img[0].width > DEFAULT_SIZE_CANVAS.width) {
+        newSize.width = DEFAULT_SIZE_CANVAS.width;
+    }
+    if (img[0].height > DEFAULT_SIZE_CANVAS.height) {
+        newSize.height = DEFAULT_SIZE_CANVAS.height;
+    }
+    img = utils.changeSize(img, newSize.width, newSize.height);
+    this.canvas = utils.changeSize(this.canvas, newSize.width, newSize.height);
 
-    this.canvas.attr('width', img.width);
-    this.canvas.attr('height', img.height);
-    this.canvas.css('width', img.width);
-    this.canvas.css('height', img.height);
     this.ctx = this.canvas[0].getContext('2d');
-    this.ctx.drawImage(img, 0, 0, img.width, img.height);
+    this.ctx.drawImage(img[0], 0, 0, newSize.width, newSize.height);
+    return 1;
 };
 Editor.prototype.showNextImage = function() {
     this.index ++;
@@ -45,18 +56,23 @@ Editor.prototype.showNextImage = function() {
     } else if (this.index >= this.listImages.length) {
         this.index = this.listImages.length - 1;
     }
-
     this.currentFace = {};
     this.facesPosition = [];
 
-    var img = $(this.listImages[this.index])[0];
-    if (this.allFacesPosition[img.src])
+    var img = this.listImages[this.index];
+    if (img && !this.oldSizeImages[img.src] && img.width && img.height) {
+        utils.adaptingValues(this, img);
+    }
+
+    if (this.allFacesPosition[img.src]) {
         this.facesPosition = this.allFacesPosition[img.src];
+    }
+    
     this.refreshCanvas();
 };
 Editor.prototype.refreshCanvas = function() {
-    this.paintImageInCanvas();
-    this.paintFacesFromList();
+    if (this.paintImageInCanvas())
+        this.paintFacesFromList();
 };
 Editor.prototype.paintAFace = function(left, top, width, height) {
     this.ctx.beginPath();
@@ -79,22 +95,21 @@ Editor.prototype.selectAFace = function(left, top, width, height) {
 Editor.prototype.paintFacesFromList = function() {
     var i;
     for (i = 0; i < this.facesPosition.length; i++) {
-        this.ctx.beginPath();
-        this.ctx.rect(this.facesPosition[i].left,
-                      this.facesPosition[i].top,
-                      this.facesPosition[i].width,
-                      this.facesPosition[i].height);
-        this.ctx.fillStyle = INSIDE_COLOR;
-        this.ctx.fill();
-        this.ctx.lineWidth = 2;
-        this.ctx.strokeStyle = BORDER_COLOR;
-        this.ctx.stroke();
+        this.paintAFace(this.facesPosition[i].left,
+                        this.facesPosition[i].top,
+                        this.facesPosition[i].width,
+                        this.facesPosition[i].height);
     }
 };
 Editor.prototype.activateEvents = function() {
     var self = this;
     $.get('/get_faces_position').done(function(data) {
         self.allFacesPosition = JSON.parse(data);
+        var self2 = self;
+        self.listImages.load(function(e) {
+            utils.adaptingValues(self2, this);
+        });
+        self.showNextImage();
     }).fail(function() {
         self.allFacesPosition = {};
     });
@@ -142,7 +157,7 @@ Editor.prototype.activateEvents = function() {
 
     this.canvas.mousemove(function(e) {
         var position = utils.getPosition(e, self.canvas.offset());
-        var aux = utils.getFaceAndAssociatedAction(positions, self.facesPosition);
+        var aux = utils.getFaceAndAssociatedAction(position, self.facesPosition);
         if (aux) {
             var position = aux[1];
             var newFacesPosition = aux[2];
@@ -290,12 +305,60 @@ var utils = {
             alert('There is no another image!!!!');
             return false;
         }
-        element.allFacesPosition[element.listImages[element.index].src] = element.facesPosition;
-        $.post('/save_faces_position', {
-            'src': element.listImages[element.index].src,
-            'position': JSON.stringify(element.facesPosition)
-        });
-        element.showNextImage();
+        var src = element.listImages[element.index].src;
+        element.allFacesPosition[src] = element.facesPosition;
+
+        var size = {width: element.canvas[0]. width, height: element.canvas[0].height};
+        if (element.oldSizeImages[src]) {
+            var x = utils.normalizeAllElements(element.facesPosition, size, element.oldSizeImages[src]);
+            $.post('/save_faces_position', {
+                'src': element.listImages[element.index].src,
+                'position': JSON.stringify(x)
+            });
+            element.showNextImage();
+        } else {
+            alert('The datas was not saved');
+        }
+    },
+    changeSize: function(element, width, height) {
+        element.attr('width', width);
+        element.attr('height', height);
+        element.css('width', width + 'px');
+        element.css('height', height + 'px');
+        return element;
+    },
+    normalize: function (element, oldSize, newSize) {
+        return {
+            width: newSize.width * element.width / oldSize.width,
+            height: newSize.height * element.height / oldSize.height,
+            left: newSize.width * element.left / oldSize.width,
+            top: newSize.height * element.top / oldSize.height
+        };
+    },
+    normalizeAllElements: function(elements, oldSize, newSize) {
+        if (!elements) {
+            return null;
+        }
+        var x = [];
+        for (var i = 0; i < elements.length; i ++) {
+            x.push(utils.normalize(elements[i], oldSize, newSize));
+        }
+        return x;
+    },
+    adaptingValues: function (element, img) {
+        if (!(img && img.width && img.height)) {
+            return false;
+        }
+        element.oldSizeImages[img.src] = {width: img.width, height: img.height};
+        var newSize = {width: img.width, height: img.height};
+        if (img.width > DEFAULT_SIZE_CANVAS.width) {
+            newSize.width = DEFAULT_SIZE_CANVAS.width;
+        }
+        if (img.height > DEFAULT_SIZE_CANVAS.height) {
+            newSize.height = DEFAULT_SIZE_CANVAS.height;
+        }
+        element.allFacesPosition[img.src] = utils.normalizeAllElements(element.allFacesPosition[img.src],
+                                                                       element.oldSizeImages[img.src], newSize);
     }
 };
 
@@ -304,6 +367,7 @@ var BORDER_COLOR = 'yellow';
 var SELECTED_FACE_BORDER_COLOR = 'red';
 var INSIDE_COLOR = 'transparent';
 var RESIZE_MARGIN = 0.20;
+var DEFAULT_SIZE_CANVAS = {'width': 700, 'height': 500};
 var CHARCODE_SAVE = 83;  // Letter s.
 $('#all-images img').attr('crossOrigin', 'Anonymous');
 $('body').ready(function () {
