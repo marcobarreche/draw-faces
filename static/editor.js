@@ -30,6 +30,7 @@ Editor.prototype.paintImageInCanvas = function() {
         img = this.loadingImage[0];
     }
 
+
     this.canvas.attr('width', img.width);
     this.canvas.attr('height', img.height);
     this.canvas.css('width', img.width);
@@ -140,14 +141,27 @@ Editor.prototype.activateEvents = function() {
     });
 
     this.canvas.mousemove(function(e) {
+        var position = utils.getPosition(e, self.canvas.offset());
+        var aux = utils.getFaceAndAssociatedAction(positions, self.facesPosition);
+        if (aux) {
+            var position = aux[1];
+            var newFacesPosition = aux[2];
+            if (aux[0] == 'move') {
+                document.body.style.cursor = 'move';
+            } else if (aux[0] == 'resize') {
+                document.body.style.cursor = 'se-resize';
+            }
+        } else {
+            document.body.style.cursor = 'default';
+        }
+
         if (!self.paint) {
             return null;
         }
         var p;
         if (self.isMoving) {
-            p = utils.getPosition(e, self.canvas.offset());
             self.refreshCanvas();
-            self.selectAFace(p.left - self.isMoving.offsetX, p.top - self.isMoving.offsetY,
+            self.selectAFace(position.left - self.isMoving.offsetX, position.top - self.isMoving.offsetY,
                              self.currentFace.width, self.currentFace.height);
         } else if (self.isResizing) {
             p = utils.getFace(e, self.canvas.offset(), self.currentFace);
@@ -239,8 +253,8 @@ var utils = {
             p = listFacesPositions[i];
             move = (position.left >= p.left && position.left <= p.left + p.width &&
                 position.top >= p.top && position.top <= p.top + p.height);
-            resize = (Math.abs(position.left - (p.left + p.width)) < RESIZE_MARGIN &&
-                Math.abs(position.top - (p.top + p.height)) < RESIZE_MARGIN);
+            resize = (Math.abs(position.left - (p.left + p.width)) < p.width * RESIZE_MARGIN &&
+                Math.abs(position.top - (p.top + p.height)) < p.height * RESIZE_MARGIN);
             if (resize) {
                 return ['resize', p, listFacesPositions.slice(0, i).concat(listFacesPositions.slice(i + 1))];
             } else if (move) {
@@ -289,7 +303,7 @@ var editor;
 var BORDER_COLOR = 'yellow';
 var SELECTED_FACE_BORDER_COLOR = 'red';
 var INSIDE_COLOR = 'transparent';
-var RESIZE_MARGIN = 10;
+var RESIZE_MARGIN = 0.20;
 var CHARCODE_SAVE = 83;  // Letter s.
 $('#all-images img').attr('crossOrigin', 'Anonymous');
 $('body').ready(function () {
