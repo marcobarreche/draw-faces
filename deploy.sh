@@ -18,4 +18,5 @@ else
   git clone $BASE_PROJECT_NAME || exit 1
 fi
 
+python generate_html.py static/draw-faces.html
 supervisorctl restart draw-faces
