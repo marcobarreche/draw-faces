@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from flask import Flask
 from flask import request
 from flask import redirect
@@ -89,6 +90,7 @@ def teardown_request(exception):
 
 def get_position_of_faces():
     faces = database.get_faces_in_all_images()
+    print faces
     if faces:
         faces = dict([(url, json.loads(pos)) for (url, pos) in faces])
     else:
@@ -97,8 +99,8 @@ def get_position_of_faces():
 
 
 def write_position(face):
-    return '%s,%s,%s,%s\n' % (str(face.get('left')), str(face.get('top')),
-                              str(face.get('width')), str(face.get('height')))
+    return '%s,%s,%s,%s\n' % (str(face.get('left')), str(face('top')),
+                              str(face.get('width')), str(face('height')))
 
 
 if __name__ == "__main__":

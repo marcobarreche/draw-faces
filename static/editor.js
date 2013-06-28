@@ -29,6 +29,7 @@ Editor.prototype.paintImageInCanvas = function() {
     if (img.width == 0) {
         img = this.loadingImage[0];
     }
+
     this.canvas.attr('width', img.width);
     this.canvas.attr('height', img.height);
     this.canvas.css('width', img.width);
@@ -59,10 +60,19 @@ Editor.prototype.refreshCanvas = function() {
 Editor.prototype.paintAFace = function(left, top, width, height) {
     this.ctx.beginPath();
     this.ctx.rect(left, top, width, height);
-    this.ctx.fillStyle = 'yellow';
+    this.ctx.fillStyle = INSIDE_COLOR;
     this.ctx.fill();
     this.ctx.lineWidth = 2;
-    this.ctx.strokeStyle = 'black';
+    this.ctx.strokeStyle = BORDER_COLOR;
+    this.ctx.stroke();
+};
+Editor.prototype.selectAFace = function(left, top, width, height) {
+    this.ctx.beginPath();
+    this.ctx.rect(left, top, width, height);
+    this.ctx.fillStyle = INSIDE_COLOR;
+    this.ctx.fill();
+    this.ctx.lineWidth = 3;
+    this.ctx.strokeStyle = SELECTED_FACE_BORDER_COLOR;
     this.ctx.stroke();
 };
 Editor.prototype.paintFacesFromList = function() {
@@ -73,10 +83,10 @@ Editor.prototype.paintFacesFromList = function() {
                       this.facesPosition[i].top,
                       this.facesPosition[i].width,
                       this.facesPosition[i].height);
-        this.ctx.fillStyle = 'yellow';
+        this.ctx.fillStyle = INSIDE_COLOR;
         this.ctx.fill();
         this.ctx.lineWidth = 2;
-        this.ctx.strokeStyle = 'black';
+        this.ctx.strokeStyle = BORDER_COLOR;
         this.ctx.stroke();
     }
 };
@@ -90,35 +100,79 @@ Editor.prototype.activateEvents = function() {
 
     this.canvas.mousedown(function(e) {
         self.paint = true;
+        self.isMoving = false;
+        self.isResizing = false;
+
         self.currentFace = utils.getPosition(e, self.canvas.offset());
+        var p = utils.getFaceAndAssociatedAction(self.currentFace, self.facesPosition);
+        if (p) {
+            var position = p[1];
+            var newFacesPosition = p[2];
+            if (p[0] == 'move') {
+                self.isMoving = {offsetX: self.currentFace.left - position.left,
+                                 offsetY: self.currentFace.top - position.top};
+            } else if (p[0] == 'resize') {
+                self.isResizing = true;
+            }
+            self.selectAFace(position.left, position.top, position.width, position.height);
+            self.currentFace = position;
+            self.facesPosition = newFacesPosition;
+        }
     });
 
     this.canvas.mouseup(function(e) {
         self.paint = false;
-        var f = utils.getFace(e, self.canvas.offset(), self.currentFace);
-        self.facesPosition.push(f);
+        if (self.isMoving) {
+            var p = utils.getPosition(e, self.canvas.offset());
+            self.currentFace.top = p.top - self.isMoving.offsetY;
+            self.currentFace.left = p.left - self.isMoving.offsetX;
+            self.facesPosition.push(self.currentFace);
+        } else {
+            var f = utils.getFace(e, self.canvas.offset(), self.currentFace);
+            if (f.width > 0 && f.height > 0) {
+                self.facesPosition.push(f);
+            }
+        }
+        self.refreshCanvas();
+        self.currentFace = {};
+        self.isMoving = false;
+        self.isResizing = false;
     });
 
     this.canvas.mousemove(function(e) {
         if (!self.paint) {
             return null;
         }
-        var f = utils.getFace(e, self.canvas.offset(), self.currentFace);
-        self.refreshCanvas();
-        self.paintAFace(f.left, f.top, f.width, f.height);
+        var p;
+        if (self.isMoving) {
+            p = utils.getPosition(e, self.canvas.offset());
+            self.refreshCanvas();
+            self.selectAFace(p.left - self.isMoving.offsetX, p.top - self.isMoving.offsetY,
+                             self.currentFace.width, self.currentFace.height);
+        } else if (self.isResizing) {
+            p = utils.getFace(e, self.canvas.offset(), self.currentFace);
+            self.refreshCanvas();
+            self.selectAFace(p.left, p.top, p.width, p.height);
+        } else {
+            p = utils.getFace(e, self.canvas.offset(), self.currentFace);
+            self.refreshCanvas();
+            self.paintAFace(p.left, p.top, p.width, p.height);
+        }
+    });
+
+    this.canvas.mouseout(function(e) {
+        if (!self.paint) {
+            return null;
+        }
+        if (self.isMoving) {
+            self.refreshCanvas();
+            self.isMoving = false;
+            self.currentFace = {};
+        }
     });
 
     $('#btn-save').click(function(e) {
-        if (self.index >= self.listImages.length) {
-            alert('There is no another image!!!!');
-            return false;
-        }
-        self.allFacesPosition[self.listImages[self.index].src] = self.facesPosition;
-        $.post('/save_faces_position', {
-            'src': self.listImages[self.index].src,
-            'position': JSON.stringify(self.facesPosition)
-        });
-        self.showNextImage();
+        utils.saveFace(self);
         return false;
     });
 
@@ -135,8 +189,8 @@ Editor.prototype.activateEvents = function() {
         self.refreshCanvas();
     });
     $('#number-img').keyup(function(e) {
-        if (e.which >= 48 && e.which <= 57) {
-            self.index = parseInt($(this).val(), 10) - 1;
+        if ((e.which >= 48 && e.which <= 57) || e.which == 8) {
+            self.index = parseInt($(this).val() || '0', 10) - 1;
             self.showNextImage();
         }
     });
@@ -154,9 +208,47 @@ Editor.prototype.activateEvents = function() {
             alert('The file was not generated correctly. There was an error!!');
         });
     });
+    $('#hide-inspected-images').click(function(e) {
+        var allImages = $('#all-images img'),
+            ls = [], i;
+
+        for (i = 0; i < allImages.length; i++) {
+            if (!self.allFacesPosition[allImages[i].src])
+                ls.push(allImages[i]);
+        };
+
+        self.listImages = ls;
+        self.currentFace = {};
+        self.facesPosition = [];
+        self.refreshCanvas();
+    });
+    $('#show-inspected-images').click(function(e) {
+        self.listImages = $('#all-images img'),
+        self.refreshCanvas();
+    });
+    $('body').keyup(function(e) {
+        if (e.target.id != 'number-img' && e.which == CHARCODE_SAVE)
+            utils.saveFace(self);
+    });
 };
 
 var utils = {
+    getFaceAndAssociatedAction: function(position, listFacesPositions) {
+        var i, p, newList, actions = ['resize', 'move'];
+        for (i = 0; i < listFacesPositions.length; i++) {
+            p = listFacesPositions[i];
+            move = (position.left >= p.left && position.left <= p.left + p.width &&
+                position.top >= p.top && position.top <= p.top + p.height);
+            resize = (Math.abs(position.left - (p.left + p.width)) < RESIZE_MARGIN &&
+                Math.abs(position.top - (p.top + p.height)) < RESIZE_MARGIN);
+            if (resize) {
+                return ['resize', p, listFacesPositions.slice(0, i).concat(listFacesPositions.slice(i + 1))];
+            } else if (move) {
+                return ['move', p, listFacesPositions.slice(0, i).concat(listFacesPositions.slice(i + 1))];
+            }
+        }
+        return null;
+    },
     getPosition: function (e, positionCanvas) {
         var x = e.pageX - positionCanvas.left;
         var y = e.pageY - positionCanvas.top;
@@ -178,10 +270,27 @@ var utils = {
             top = currentFace.top - height;
         }
         return {left: left, top: top, width: width, height: height};
+    },
+    saveFace: function(element) {
+        if (element.index >= element.listImages.length) {
+            alert('There is no another image!!!!');
+            return false;
+        }
+        element.allFacesPosition[element.listImages[element.index].src] = element.facesPosition;
+        $.post('/save_faces_position', {
+            'src': element.listImages[element.index].src,
+            'position': JSON.stringify(element.facesPosition)
+        });
+        element.showNextImage();
     }
 };
 
 var editor;
+var BORDER_COLOR = 'yellow';
+var SELECTED_FACE_BORDER_COLOR = 'red';
+var INSIDE_COLOR = 'transparent';
+var RESIZE_MARGIN = 10;
+var CHARCODE_SAVE = 83;  // Letter s.
 $('#all-images img').attr('crossOrigin', 'Anonymous');
 $('body').ready(function () {
     editor = new Editor();
