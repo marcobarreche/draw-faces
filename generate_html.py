@@ -46,10 +46,12 @@ HEAD_HTML = """<html>
 
 
 def generate_file_with_names(namefile, folder):
+    i = 0
     with open(namefile, 'w+') as f:
         f.write(HEAD_HTML)
         for img_name in os.listdir(folder):
-            f.write('\t\t\t<img src="/static/img/%s">\n' % img_name)
+            f.write('\t\t\t<img id="img-%d" src="/static/img/%s">\n' % (i, img_name))
+            i += 1
         f.write('\t\t</div>\n\t</body>\n</html>')
 
 
