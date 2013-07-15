@@ -1,0 +1,3 @@
+*.pyc
+static/img/*.png
+static/img/*.jpg
