@@ -1,5 +1,6 @@
 function Editor () {
-    this.listImages = $('#all-images img');
+    this.listImagesSrc = $('#all-images input');
+    this.listImages = new Array(this.listImagesSrc.length);
     this.canvas = $('#canvas1');
 
     this.index = -1;
@@ -17,7 +18,7 @@ Editor.prototype.createLoadingImage = function() {
     loadingImage[0].height = DEFAULT_SIZE_CANVAS.height;
     return loadingImage;
 };
-Editor.prototype.paintImageInCanvas = function() {
+Editor.prototype.paintImageInCanvas = function(img) {
     $('#number-img').val(this.index);
 
     if (this.index >= this.listImages.length) {
@@ -26,7 +27,6 @@ Editor.prototype.paintImageInCanvas = function() {
         this.index = 0;
     }
 
-    img = $(this.listImages[this.index]);
     var oldSize = this.oldSizeImages[img[0].src];
     if (img[0].width == 0 || !oldSize) {
         img = this.loadingImage;
@@ -59,20 +59,30 @@ Editor.prototype.showNextImage = function() {
     this.currentFace = {};
     this.facesPosition = [];
 
-    var img = this.listImages[this.index];
-    if (img && !this.oldSizeImages[img.src] && img.width && img.height) {
-        utils.adaptingValues(this, img);
+    if (this.listImages[this.index]) {
+        utils.showNextImage(this, this.listImages[this.index][0]);
+    } else {
+        var self = this;
+        this.listImages[this.index] = $(new Image());
+        this.listImages[this.index][0].src = $(this.listImagesSrc[this.index]).val();
+        this.listImages[this.index].load(function() {
+            utils.showNextImage(self, this);
+        });
     }
-
-    if (this.allFacesPosition[img.src]) {
-        this.facesPosition = this.allFacesPosition[img.src];
-    }
-    
-    this.refreshCanvas();
 };
 Editor.prototype.refreshCanvas = function() {
-    if (this.paintImageInCanvas())
-        this.paintFacesFromList();
+    if (this.listImages[this.index]) {
+        if (this.paintImageInCanvas(this.listImages[this.index]))
+            this.paintFacesFromList();
+    } else {
+        var self = this;
+        this.listImages[this.index] = $(new Image());
+        this.listImages[this.index][0].src = $(this.listImagesSrc[this.index]).val();
+        this.listImages[this.index].load(function() {
+            if (self.paintImageInCanvas(this))
+                self.paintFacesFromList();
+        });
+    }
 };
 Editor.prototype.paintAFace = function(left, top, width, height) {
     this.ctx.beginPath();
@@ -106,9 +116,9 @@ Editor.prototype.activateEvents = function() {
     $.get('/get_faces_position').done(function(data) {
         self.allFacesPosition = JSON.parse(data);
         var self2 = self;
-        self.listImages.load(function(e) {
-            utils.adaptingValues(self2, this);
-        });
+        // self.listImages.load(function(e) {
+        //     utils.adaptingValues(self2, this);
+        // });
         self.showNextImage();
     }).fail(function() {
         self.allFacesPosition = {};
@@ -262,6 +272,19 @@ Editor.prototype.activateEvents = function() {
 };
 
 var utils = {
+    showNextImage: function (element, img) {
+        if (!element) {
+            return false;
+        }
+
+        if (img && !element.oldSizeImages[img.src] && img.width && img.height) {
+            utils.adaptingValues(element, img);
+        }
+        if (img && element.allFacesPosition[img.src]) {
+            element.facesPosition = element.allFacesPosition[img.src];
+        }
+        element.refreshCanvas();
+    },
     getFaceAndAssociatedAction: function(position, listFacesPositions) {
         var i, p, newList, actions = ['resize', 'move'];
         for (i = 0; i < listFacesPositions.length; i++) {
@@ -305,14 +328,14 @@ var utils = {
             alert('There is no another image!!!!');
             return false;
         }
-        var src = element.listImages[element.index].src;
+        var src = $(element.listImages[element.index])[0].src;
         element.allFacesPosition[src] = element.facesPosition;
 
         var size = {width: element.canvas[0]. width, height: element.canvas[0].height};
         if (element.oldSizeImages[src]) {
             var x = utils.normalizeAllElements(element.facesPosition, size, element.oldSizeImages[src]);
             $.post('/save_faces_position', {
-                'src': element.listImages[element.index].src,
+                'src': src,
                 'position': JSON.stringify(x)
             });
             element.showNextImage();
