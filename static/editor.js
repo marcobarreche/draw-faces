@@ -21,8 +21,8 @@ Editor.prototype.createLoadingImage = function() {
 Editor.prototype.paintImageInCanvas = function(img) {
     $('#number-img').val(this.index);
 
-    if (this.index >= this.listImages.length) {
-        this.index = this.listImages.length - 1;
+    if (this.index >= this.listImagesSrc.length) {
+        this.index = this.listImagesSrc.length - 1;
     } else if (this.index < 0) {
         this.index = 0;
     }
@@ -53,8 +53,8 @@ Editor.prototype.showNextImage = function() {
     this.index ++;
     if (this.index < 0) {
         this.index = 0;
-    } else if (this.index >= this.listImages.length) {
-        this.index = this.listImages.length - 1;
+    } else if (this.index >= this.listImagesSrc.length) {
+        this.index = this.listImagesSrc.length - 1;
     }
     this.currentFace = {};
     this.facesPosition = [];
@@ -68,6 +68,9 @@ Editor.prototype.showNextImage = function() {
         this.listImages[this.index].load(function() {
             utils.showNextImage(self, this);
         });
+        if (this.listImages[this.index]) {
+            utils.showNextImage(this, $(this.listImages[this.index]));
+        }
     }
 };
 Editor.prototype.refreshCanvas = function() {
@@ -79,9 +82,13 @@ Editor.prototype.refreshCanvas = function() {
         this.listImages[this.index] = $(new Image());
         this.listImages[this.index][0].src = $(this.listImagesSrc[this.index]).val();
         this.listImages[this.index].load(function() {
-            if (self.paintImageInCanvas(this))
+            if (self.paintImageInCanvas($(this)))
                 self.paintFacesFromList();
         });
+        if (this.listImages[this.index]) {
+            if (this.paintImageInCanvas($(this.listImages[this.index])))
+                this.paintFacesFromList();
+        }
     }
 };
 Editor.prototype.paintAFace = function(left, top, width, height) {
@@ -248,21 +255,26 @@ Editor.prototype.activateEvents = function() {
         });
     });
     $('#hide-inspected-images').click(function(e) {
-        var allImages = $('#all-images img'),
+        var allImages = $('#all-images input'),
             ls = [], i;
 
+        var key;
         for (i = 0; i < allImages.length; i++) {
-            if (!self.allFacesPosition[allImages[i].src])
+            key = 'http://' + window.location.host + $(allImages[i]).val();
+            if (!self.allFacesPosition[key]) {
                 ls.push(allImages[i]);
-        };
+            }
+        }
 
-        self.listImages = ls;
+        self.listImagesSrc = ls;
+        self.listImages = [];
         self.currentFace = {};
         self.facesPosition = [];
         self.refreshCanvas();
     });
     $('#show-inspected-images').click(function(e) {
-        self.listImages = $('#all-images img'),
+        self.listImagesSrc = $('#all-images input');
+        self.listImages = [];
         self.refreshCanvas();
     });
     $('body').keyup(function(e) {
@@ -324,7 +336,7 @@ var utils = {
         return {left: left, top: top, width: width, height: height};
     },
     saveFace: function(element) {
-        if (element.index >= element.listImages.length) {
+        if (element.index >= element.listImagesSrc.length) {
             alert('There is no another image!!!!');
             return false;
         }
